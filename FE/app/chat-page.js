@@ -388,6 +388,7 @@ export default function ChatPage({ sessionId }) {
           method: "GET",
           headers: {
             Accept: "application/json",
+            "ngrok-skip-browser-warning": "true",
           },
         });
 
@@ -437,6 +438,7 @@ export default function ChatPage({ sessionId }) {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json, text/plain;q=0.9",
+        "ngrok-skip-browser-warning": "true",
       },
       body: JSON.stringify({
         query: message,
