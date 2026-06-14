@@ -1,0 +1,239 @@
+#!/usr/bin/env bash
+#
+# db - Anarock staging PostgreSQL query CLI
+#
+# Usage:
+#   db query <database> "<SQL>" [--limit N]
+
+set -euo pipefail
+
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+
+PYTHON="$SCRIPT_DIR/venv/bin/python3"
+if [[ ! -x "$PYTHON" ]]; then
+  PYTHON="python3"
+fi
+VERSION="2.0.0"
+
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+  set -a
+  source "$SCRIPT_DIR/.env"
+  set +a
+fi
+
+RED=''
+GREEN=''
+YELLOW=''
+NC=''
+if [[ -t 1 ]]; then
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[0;33m'
+  NC='\033[0m'
+fi
+
+error() {
+  echo -e "${RED}Error: $1${NC}" >&2
+  exit 1
+}
+
+info() {
+  echo -e "${GREEN}$1${NC}" >&2
+}
+
+resolve_db_alias() {
+  local db="$1"
+
+  case "$db" in
+    leads|lead)           echo "anarock_leads_production" ;;
+    users|user|employee)  echo "anarock_employee_production" ;;
+    digix)                echo "anarock_digix_prod" ;;
+    genie|genie_be)       echo "genie" ;;
+    calling|telephony)    echo "anarock_calling_production" ;;
+    finance|plutus)       echo "anarock_plutus_production" ;;
+    analytics|marketing)  echo "anarock_analytics" ;;
+    *)                    echo "$db" ;;
+  esac
+}
+
+get_auth_token_file() {
+  echo "$SCRIPT_DIR/auth_token_staging.txt"
+}
+
+load_auth_token() {
+  local token_file
+  token_file=$(get_auth_token_file)
+  if [[ -f "$token_file" ]]; then
+    tr -d '\n' < "$token_file"
+  else
+    return 1
+  fi
+}
+
+ensure_auth_token() {
+  local token
+  if ! token=$(load_auth_token); then
+    info "No staging auth token found, running login..."
+    "$PYTHON" "$SCRIPT_DIR/anarock_login.py" >&2
+    token=$(load_auth_token)
+  fi
+  echo "$token"
+}
+
+urlencode_sql() {
+  SQL_QUERY="$1" "$PYTHON" -c "import os, urllib.parse; print(urllib.parse.quote(os.environ['SQL_QUERY']))"
+}
+
+run_sql_query() {
+  local dbname="$1"
+  local sql="$2"
+  local limit="${3:-}"
+  local query_url="${SQL_QUERY_URL_STAGING:-https://marketing-dashboards.staging.anarock.com/query}"
+  local resolved_db
+  local safe_sql="$sql"
+
+  resolved_db=$(resolve_db_alias "$dbname")
+
+  if [[ ! "$sql" =~ [Ww][Hh][Ee][Rr][Ee] ]] && [[ ! "$sql" =~ [Gg][Rr][Oo][Uu][Pp] ]] && [[ ! "$sql" =~ [Ll][Ii][Mm][Ii][Tt] ]]; then
+    safe_sql="${sql%;}"
+    safe_sql="$safe_sql LIMIT 10000"
+  fi
+
+  if [[ -n "$limit" ]] && [[ ! "$sql" =~ [Ll][Ii][Mm][Ii][Tt] ]]; then
+    safe_sql="${sql%;}"
+    safe_sql="$safe_sql LIMIT $limit"
+  fi
+
+  local token
+  token=$(ensure_auth_token)
+
+  local response
+  response=$(curl -s -L -k -w "\n%{http_code}" \
+    "$query_url" \
+    -H "accept: application/json, text/plain, */*" \
+    -H "content-type: application/x-www-form-urlencoded" \
+    -H "origin: ${query_url%/query}" \
+    -H "referer: ${query_url%/query}/" \
+    -H "user-agent: Mozilla/5.0" \
+    -H "Cookie: auth_token=${token};sessionid=1" \
+    -d "dbname=${resolved_db}&sql=$(urlencode_sql "$safe_sql")")
+
+  local http_code
+  local body
+  http_code=$(echo "$response" | tail -n1)
+  body=$(echo "$response" | sed '$d')
+
+  if [[ "$http_code" == "200" ]] && echo "$body" | grep -q "redirect_to="; then
+    info "Auth token expired, re-logging in..."
+    "$PYTHON" "$SCRIPT_DIR/anarock_login.py" >&2
+    token=$(load_auth_token)
+
+    response=$(curl -s -L -k -w "\n%{http_code}" \
+      "$query_url" \
+      -H "accept: application/json, text/plain, */*" \
+      -H "content-type: application/x-www-form-urlencoded" \
+      -H "origin: ${query_url%/query}" \
+      -H "referer: ${query_url%/query}/" \
+      -H "user-agent: Mozilla/5.0" \
+      -H "Cookie: auth_token=${token};sessionid=1" \
+      -d "dbname=${resolved_db}&sql=$(urlencode_sql "$safe_sql")")
+
+    http_code=$(echo "$response" | tail -n1)
+    body=$(echo "$response" | sed '$d')
+  fi
+
+  if [[ "$http_code" != "200" ]]; then
+    error "API request failed with HTTP $http_code: $body"
+  fi
+
+  echo "$body"
+}
+
+show_help() {
+  cat << 'EOF'
+db - Anarock staging PostgreSQL query CLI
+
+USAGE:
+    db <command> [args...]
+
+OPTIONS:
+    -h, --help      Show this help message
+    -v, --version   Show version
+
+COMMANDS:
+    query <database> "<SQL>" [--limit N]
+
+DATABASE ALIASES:
+    leads
+    users
+    digix
+    genie      -> genie
+    calling
+    finance
+    analytics
+
+EXAMPLE:
+    db query leads "SELECT id, name FROM leads LIMIT 5"
+
+EOF
+}
+
+cmd_query() {
+  if [[ $# -lt 2 ]]; then
+    error "Usage: db query <database> \"<SQL>\" [--limit N]"
+  fi
+
+  local dbname="$1"
+  local sql="$2"
+  local limit=""
+
+  if [[ -z "$dbname" ]]; then
+    error "Database name is required"
+  fi
+  if [[ -z "$sql" ]]; then
+    error "SQL query is required"
+  fi
+
+  if [[ $# -ge 4 ]] && [[ "$3" == "--limit" ]]; then
+    limit="$4"
+  fi
+
+  if [[ -n "$limit" ]] && [[ ! "$limit" =~ ^[0-9]+$ ]]; then
+    error "Limit must be a positive integer"
+  fi
+
+  run_sql_query "$dbname" "$sql" "$limit"
+}
+
+main() {
+  if [[ $# -eq 0 ]]; then
+    show_help
+    exit 0
+  fi
+
+  case "$1" in
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    -v|--version)
+      echo "db $VERSION"
+      exit 0
+      ;;
+    query)
+      shift
+      cmd_query "$@"
+      ;;
+    *)
+      error "Unknown command: $1. Use 'db --help' for usage."
+      ;;
+  esac
+}
+
+main "$@"
