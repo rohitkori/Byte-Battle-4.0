@@ -35,7 +35,8 @@ Request body:
 
 ```json
 {
-  "query": "get count of yesterdays leads"
+  "query": "get count of yesterdays leads",
+  "session_id": "frontend-chat-session-id"
 }
 ```
 
