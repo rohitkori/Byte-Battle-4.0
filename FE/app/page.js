@@ -5,10 +5,18 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 const initialMessage = {
   id: "welcome",
   role: "assistant",
-  content: "Hello! I'm the Anarock AI assistant. How can I help you today?",
+  content: "Hello! I'm the QueryGPT assistant. How can I help you today?",
 };
 
-const defaultEndpoint = `${process.env.NEXT_PUBLIC_BASE_URL}/query/`;
+const defaultEndpoint = `${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/query/`;
+
+function createSessionId() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 function formatTime(date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -283,6 +291,7 @@ function TypingIndicator() {
 export default function Home() {
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([initialMessage]);
+  const [sessionId, setSessionId] = useState(createSessionId);
   const [status, setStatus] = useState("Ready");
   const [isErrorStatus, setIsErrorStatus] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -317,6 +326,7 @@ export default function Home() {
       },
       body: JSON.stringify({
         query: message,
+        session_id: sessionId,
       }),
     });
 
@@ -385,6 +395,7 @@ export default function Home() {
 
   function clearChat() {
     setMessages([initialMessage]);
+    setSessionId(createSessionId());
     setStatus("Ready");
     setIsErrorStatus(false);
     textareaRef.current?.focus();
@@ -392,14 +403,14 @@ export default function Home() {
 
   return (
     <main className="app-shell">
-      <section className="chat-panel" aria-label="Anarock AI Chat">
+      <section className="chat-panel" aria-label="QueryGPT Chat">
         <header className="chat-header">
           <div className="brand">
             <div className="brand-mark" aria-hidden="true">
               <span />
             </div>
             <div className="brand-text">
-              <h1>Anarock AI</h1>
+              <h1>QueryGPT</h1>
             </div>
             <PebbleTag tone={isErrorStatus ? "red" : isSending ? "yellow" : "emerald"}>
               {status}

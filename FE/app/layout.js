@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Chat Bot",
-  description: "A React and Next.js chatbot frontend.",
+  title: "QueryGPT",
+  description: "A React and Next.js QueryGPT frontend.",
 };
 
 export default function RootLayout({ children }) {
