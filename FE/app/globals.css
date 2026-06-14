@@ -1,0 +1,712 @@
+:root {
+  color-scheme: light;
+  --violet-darker: #4040ba;
+  --violet-dark: #5656ed;
+  --violet-base: #6161ff;
+  --violet-light: #7070ff;
+  --violet-lighter: #c0c0ff;
+  --violet-lightest: #e8e8ff;
+  --emerald-base: #10ac60;
+  --emerald-light: #40bd80;
+  --emerald-lightest: #dbf3e7;
+  --red-base: #d32f02;
+  --red-light: #d94c26;
+  --red-lightest: #f9e0d9;
+  --yellow-base: #f3aa07;
+  --yellow-light: #fdf2da;
+  --gray-darker: #101721;
+  --gray-dark: #6b7785;
+  --gray-base: #9fa6b0;
+  --gray-light: #d0d5db;
+  --gray-lighter: #ededed;
+  --gray-lightest: #f5f5f7;
+  --gray-border: #e6e6e6;
+  --white: #ffffff;
+  --radius: 4px;
+  --radius-lg: 8px;
+  --shadow-base: 0 1px 4px 0 rgba(0, 0, 0, 0.07);
+  --shadow-elevated: 0 4px 20px 0 rgba(0, 0, 0, 0.08);
+  --curve: cubic-bezier(0.64, 0.09, 0.08, 1);
+  font-family:
+    "Anarock", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  box-sizing: border-box;
+  background: var(--gray-lightest);
+  color: var(--gray-darker);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gray-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-base);
+}
+
+/* ─── App shell ──────────────────────────────────────────────────────────── */
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 30px;
+}
+
+/* ─── Chat panel ─────────────────────────────────────────────────────────── */
+
+.chat-panel {
+  width: min(100%, 940px);
+  height: min(880px, calc(100vh - 60px));
+  min-height: 560px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  background: var(--white);
+  border: 1px solid var(--gray-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-elevated);
+}
+
+/* ─── Chat header ────────────────────────────────────────────────────────── */
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--gray-lighter);
+  background: var(--white);
+}
+
+.brand {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: var(--radius);
+  background: var(--violet-base);
+  box-shadow: 0 2px 8px rgba(97, 97, 255, 0.35);
+}
+
+.brand-mark span {
+  width: 22px;
+  height: 16px;
+  display: block;
+  border: 2px solid var(--white);
+  border-radius: var(--radius);
+  position: relative;
+}
+
+.brand-mark span::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  position: absolute;
+  right: 2px;
+  bottom: -6px;
+  border-right: 2px solid var(--white);
+  border-bottom: 2px solid var(--white);
+  transform: skewY(35deg);
+}
+
+.brand-text {
+  min-width: 0;
+}
+
+.brand-text h1 {
+  margin: 0 0 6px;
+  color: var(--gray-darker);
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.brand-text p {
+  margin: 0;
+  color: var(--gray-base);
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* ─── Tags ───────────────────────────────────────────────────────────────── */
+
+.pebble-tag {
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.pebble-tag-violet {
+  color: var(--violet-base);
+  background: var(--violet-lightest);
+}
+
+.pebble-tag-emerald {
+  color: var(--emerald-base);
+  background: var(--emerald-lightest);
+}
+
+.pebble-tag-red {
+  color: var(--red-base);
+  background: var(--red-lightest);
+}
+
+.pebble-tag-yellow {
+  color: var(--yellow-base);
+  background: var(--yellow-light);
+}
+
+/* ─── Messages ───────────────────────────────────────────────────────────── */
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding: 24px;
+  scroll-behavior: smooth;
+  background: var(--gray-lightest);
+}
+
+.message {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+  max-width: min(720px, 100%);
+}
+
+.message.user-message {
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+.message-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-message .message-body {
+  align-items: flex-end;
+}
+
+.message-meta {
+  font-size: 11px;
+  color: var(--gray-base);
+  padding: 0 4px;
+}
+
+/* ─── Avatar ─────────────────────────────────────────────────────────────── */
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: var(--radius);
+  background: var(--white);
+  border: 1px solid var(--gray-lighter);
+  color: var(--gray-dark);
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: var(--shadow-base);
+  letter-spacing: 0.02em;
+}
+
+.user-message .avatar {
+  grid-column: 2;
+  color: var(--violet-base);
+  background: var(--violet-lightest);
+  border-color: var(--violet-lighter);
+}
+
+/* ─── Bubbles ─────────────────────────────────────────────────────────────── */
+
+.bubble {
+  min-width: 0;
+  max-width: min(600px, calc(100vw - 110px));
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  border-bottom-left-radius: 2px;
+  background: var(--white);
+  border: 1px solid var(--gray-lighter);
+  color: var(--gray-darker);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  box-shadow: var(--shadow-base);
+}
+
+.user-message .bubble {
+  grid-column: 1;
+  grid-row: 1;
+  border-radius: var(--radius-lg);
+  border-bottom-right-radius: 2px;
+  color: var(--violet-darker);
+  background: var(--violet-lightest);
+  border-color: var(--violet-lighter);
+}
+
+.bubble p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.bubble p + p {
+  margin-top: 8px;
+}
+
+.message.error-message .bubble {
+  color: var(--red-base);
+  background: var(--red-lightest);
+  border-color: #efbbad;
+}
+
+.typing .bubble {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* ─── Composer ───────────────────────────────────────────────────────────── */
+
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: end;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--gray-lighter);
+  background: var(--white);
+}
+
+.composer-hint {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--gray-base);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.composer-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 5px;
+  background: var(--gray-lighter);
+  border: 1px solid var(--gray-border);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--gray-dark);
+  line-height: 1.4;
+}
+
+/* ─── Button ─────────────────────────────────────────────────────────────── */
+
+.pebble-button {
+  height: 40px;
+  min-width: 90px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--radius);
+  outline: none;
+  position: relative;
+  overflow: hidden;
+  color: var(--white);
+  background: var(--violet-base);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.15s ease-out, transform 0.1s ease-out, box-shadow 0.15s ease-out;
+}
+
+.pebble-button:not([disabled]):hover {
+  background: var(--violet-light);
+  box-shadow: 0 2px 8px rgba(97, 97, 255, 0.35);
+}
+
+.pebble-button:not([disabled]):active {
+  background: var(--violet-dark);
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.pebble-button[disabled] {
+  background: var(--violet-lighter);
+}
+
+.pebble-button-secondary {
+  color: var(--gray-darker);
+  background: var(--gray-lighter);
+  box-shadow: none;
+}
+
+.pebble-button-secondary:not([disabled]):hover {
+  color: var(--gray-darker);
+  background: #e4e4e8;
+  box-shadow: none;
+}
+
+.pebble-button-secondary:not([disabled]):active {
+  color: var(--gray-darker);
+  background: var(--gray-light);
+  box-shadow: none;
+}
+
+/* ─── Input (floating-label textarea) ───────────────────────────────────── */
+
+/*
+  Layout:
+    .pebble-input (relative, no fixed height)
+      .pebble-input-control (padding-top creates space for the floating label)
+        textarea (auto-height via JS, grows from min-height)
+        .pebble-loader (optional, shown while sending)
+      label (absolute, overlays textarea, floats on focus/value)
+      .pebble-input-highlight (animated underline)
+*/
+
+.pebble-input {
+  width: 100%;
+  position: relative;
+  background: var(--white);
+}
+
+.pebble-input-control {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  /* padding-top reserves vertical space for the floating label */
+  padding-top: 22px;
+  border-bottom: 1px solid var(--gray-border);
+  transition: border-color 0.2s var(--curve);
+}
+
+.pebble-input:focus-within .pebble-input-control {
+  border-color: var(--violet-base);
+}
+
+.pebble-input textarea {
+  flex: 1;
+  min-height: 36px;
+  max-height: 160px;
+  resize: none;
+  outline: 0;
+  border: 0;
+  padding: 0 0 10px;
+  border-radius: 0;
+  color: var(--gray-darker);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-y: hidden;
+}
+
+.pebble-input textarea::placeholder {
+  color: transparent;
+  transition: color 0.2s;
+}
+
+.pebble-input:focus-within textarea::placeholder,
+.pebble-input[data-has-value="true"] textarea::placeholder {
+  color: var(--gray-light);
+}
+
+.pebble-input label {
+  position: absolute;
+  /* top matches control's padding-top so label sits at the start of the textarea */
+  top: 22px;
+  left: 0;
+  color: var(--gray-base);
+  font-size: 14px;
+  line-height: 1.5;
+  pointer-events: none;
+  transition: top 0.25s var(--curve), font-size 0.25s var(--curve), color 0.25s var(--curve);
+  white-space: nowrap;
+}
+
+.pebble-input:focus-within label,
+.pebble-input[data-has-value="true"] label {
+  top: 4px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--violet-base);
+}
+
+.pebble-input-highlight {
+  width: 0;
+  height: 2px;
+  background: var(--violet-base);
+  transition: width 0.3s var(--curve);
+}
+
+.pebble-input:focus-within .pebble-input-highlight {
+  width: 100%;
+}
+
+/* ─── Data table (rendered from markdown table in AI response) ───────────── */
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--gray-border);
+  /* negative margin compensation so table flush with bubble padding */
+  margin: 4px 0;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.data-table thead tr {
+  background: var(--violet-lightest);
+  border-bottom: 1px solid var(--violet-lighter);
+}
+
+.data-table th {
+  padding: 9px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--violet-darker);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 8px 14px;
+  color: var(--gray-darker);
+  border-bottom: 1px solid var(--gray-lighter);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: var(--gray-lightest);
+}
+
+.data-table tbody tr:hover {
+  background: #f0f0ff;
+}
+
+/* bubble that contains a table shouldn't have a fixed max-width cap */
+.bubble:has(.table-wrapper) {
+  max-width: min(820px, calc(100vw - 110px));
+}
+
+/* ─── Loader ─────────────────────────────────────────────────────────────── */
+
+.pebble-loader {
+  width: 52px;
+  display: inline-flex;
+  justify-content: space-between;
+  transform-origin: center;
+}
+
+.pebble-loader span {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  border-radius: 100%;
+  background: currentColor;
+  animation: pebble-loader-bounce 1.4s infinite ease-in-out both;
+}
+
+.pebble-loader span:first-of-type {
+  animation-delay: -0.32s;
+}
+
+.pebble-loader span:nth-of-type(2) {
+  animation-delay: -0.16s;
+}
+
+.typing .pebble-loader {
+  color: var(--gray-base);
+}
+
+.pebble-button .pebble-loader {
+  color: currentColor;
+}
+
+.pebble-input .pebble-loader {
+  color: var(--violet-base);
+  flex: 0 0 auto;
+  margin-bottom: 12px;
+}
+
+/* ─── Utility ────────────────────────────────────────────────────────────── */
+
+.visually-hidden {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  position: absolute;
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+
+@keyframes pebble-loader-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+
+  40% {
+    transform: scale(1);
+  }
+}
+
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message {
+  animation: message-in 0.2s ease-out;
+}
+
+/* ─── Mobile ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 700px) {
+  .app-shell {
+    padding: 0;
+  }
+
+  .chat-panel {
+    width: 100%;
+    min-height: 100dvh;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .chat-header {
+    padding-inline: 16px;
+    padding-block: 14px;
+  }
+
+  .messages {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .composer {
+    padding: 12px 16px 16px;
+    gap: 12px;
+  }
+
+  .message {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .message.user-message {
+    grid-template-columns: minmax(0, 1fr) 32px;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 10px;
+  }
+
+  .bubble {
+    max-width: calc(100vw - 90px);
+    font-size: 13px;
+  }
+
+  .composer-hint {
+    display: none;
+  }
+}
