@@ -1,9 +1,9 @@
 ---
 name: db
-description: Use when the user wants to query Anarock PostgreSQL databases through the local db CLI - e.g. "query leads", "show bookings", "find user", "check assignments", "look up campaign rows". Routes natural language to the correct SQL database alias and query pattern.
+description: Use when the user wants to query Anarock databases through the local db CLI - e.g. "query leads", "show bookings", "find user", "check assignments", "look up campaign rows", or location/locality/address lookups. Routes natural language to the correct SQL database alias, and uses Elasticsearch only for location-related queries like filtering cps by operational localities.
 ---
 
-# Anarock PostgreSQL Query Skill
+# Anarock Database Query Skill
 
 Use the local `db` CLI for all database lookups. It is already configured for the correct environment; do not add environment flags or ask the user to choose an environment.
 
@@ -20,6 +20,7 @@ Use the local `db` CLI for all database lookups. It is already configured for th
 | genie, AI, message, drip | `db query genie "..."` | `genie` |
 | call, telephony, phone | `db query calling "..."` | `calling` |
 | finance, plutus | `db query finance "..."` | `finance` |
+| location, locality, area, address | `db es entities "..."` | `entities` |
 
 ## CLI Usage
 
@@ -27,6 +28,7 @@ Use the local `db` CLI for all database lookups. It is already configured for th
 db query leads "SELECT id, name, phone FROM leads WHERE id = 12345"
 db query users "SELECT id, name FROM users LIMIT 10"
 db query genie "SELECT id, broadcast_name FROM campaigns LIMIT 10"
+db es entities '{"query": {"wildcard": {"operational_localities.formatted_address": {"value": "*thane*", "case_insensitive": true}}}, "size": 10}'
 ```
 
 Use aliases instead of full database names. The CLI resolves aliases internally:
@@ -40,6 +42,7 @@ Use aliases instead of full database names. The CLI resolves aliases internally:
 | `genie` | AI messaging, drip campaigns, sessions, calls |
 | `calling` | Telephony and call logs |
 | `analytics` | Reporting, aggregate marketing/spend data |
+| `entities` | Elasticsearch location/locality/address search only |
 
 ## Core Rules
 
@@ -51,6 +54,7 @@ Use aliases instead of full database names. The CLI resolves aliases internally:
 - Use `ILIKE` for case-insensitive text search.
 - Use `information_schema.columns` to discover columns when unsure.
 - Use `pg_indexes` to check indexes when query shape matters.
+- Run Elasticsearch queries only for location-related requests such as locality, area, address, or operational locality matching. Use SQL aliases for all non-location lookups.
 
 ## Cross-Database Boundaries
 
@@ -221,6 +225,16 @@ LEFT JOIN brokerage_milestones bm ON bm.id = ibm.brokerage_milestone_id
 WHERE b.lead_id = 12345"
 ```
 
+### Location Search With Elasticsearch
+
+Only use Elasticsearch when the user is asking a location-related question. Query the `entities` index and wildcard-match `operational_localities.formatted_address` for locality, area, or address text; the full reference is `entities.operational_localities.formatted_address`.
+
+```bash
+db es entities '{"size": 20, "_source": ["id", "name", "type", "operational_localities.formatted_address"], "query": {"wildcard": {"operational_localities.formatted_address": {"value": "*thane*", "case_insensitive": true}}}}'
+```
+
+If the user provides multiple location words, keep the wildcard value as the user's meaningful phrase, lowercased if convenient, wrapped in `*`, for example `*hiranandani estate*`.
+
 ## Useful Discovery Queries
 
 ```bash
@@ -257,3 +271,4 @@ Read only the relevant schema file when needed:
 | Joining Genie `users` with the `users` alias | Confusing results | Treat Genie `users` as local to Genie |
 | Querying `users` table in `leads` | `relation does not exist` | Query `users` alias separately |
 | Missing IST conversion | Timestamps show UTC | Add `+ interval '5:30'` |
+| Using Elasticsearch for non-location lookups | Wrong data source or stale guidance | Use ES only for `entities.operational_localities.formatted_address` location matching |
