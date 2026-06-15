@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Staging-only configuration for the PostgreSQL query tools."""
+"""Staging-only configuration for database query tools."""
 import os
 from pathlib import Path
 
@@ -12,6 +12,8 @@ load_dotenv(SCRIPT_DIR / ".env")
 DEFAULTS = {
     "ANAROCK_AUTH_URL_STAGING": "https://employee.beta.staging.anarock.com/api/v0/authenticate",
     "SQL_QUERY_URL_STAGING": "https://marketing-dashboards.staging.anarock.com/query",
+    "KIBANA_URL_STAGING": "https://es-search.staging.anarock.com:5601",
+    "KIBANA_VERSION_STAGING": "8.3.2",
 }
 
 
@@ -23,8 +25,13 @@ def get_url(type_: str) -> str:
     urls = {
         "auth": os.environ.get("ANAROCK_AUTH_URL_STAGING", DEFAULTS["ANAROCK_AUTH_URL_STAGING"]),
         "sql": os.environ.get("SQL_QUERY_URL_STAGING", DEFAULTS["SQL_QUERY_URL_STAGING"]),
+        "kibana": os.environ.get("KIBANA_URL_STAGING", DEFAULTS["KIBANA_URL_STAGING"]),
     }
     return urls.get(type_, "")
+
+
+def get_kbn_version() -> str:
+    return os.environ.get("KIBANA_VERSION_STAGING", DEFAULTS["KIBANA_VERSION_STAGING"])
 
 
 def get_token_filename(base_name: str) -> Path:
@@ -33,3 +40,5 @@ def get_token_filename(base_name: str) -> Path:
 
 ANAROCK_EMAIL = lambda: get_var("ANAROCK_EMAIL")
 ANAROCK_PASSWORD = lambda: get_var("ANAROCK_PASSWORD")
+KIBANA_USERNAME = lambda: get_var("KIBANA_USERNAME")
+KIBANA_PASSWORD = lambda: get_var("KIBANA_PASSWORD")

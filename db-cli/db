@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 #
-# db - Anarock staging PostgreSQL query CLI
+# db - Anarock staging database CLI
 #
 # Usage:
 #   db query <database> "<SQL>" [--limit N]
+#   db es <index> "<JSON>"
+#   db es indices [--all]
+#   db es mapping <index>
 
 set -euo pipefail
 
@@ -155,9 +158,123 @@ run_sql_query() {
   echo "$body"
 }
 
+get_es_sid_file() {
+  echo "$SCRIPT_DIR/es_sid_staging.txt"
+}
+
+load_es_sid() {
+  local sid_file
+  sid_file=$(get_es_sid_file)
+  if [[ -f "$sid_file" ]]; then
+    tr -d '\n' < "$sid_file"
+  else
+    return 1
+  fi
+}
+
+ensure_es_sid() {
+  local sid
+  if ! sid=$(load_es_sid); then
+    info "No staging ES session found, running login..."
+    if ! "$PYTHON" "$SCRIPT_DIR/kibana_login.py" >&2; then
+      error "ES login failed. Set KIBANA_USERNAME_STAGING and KIBANA_PASSWORD_STAGING, or provide es_sid_staging.txt."
+    fi
+    if ! sid=$(load_es_sid); then
+      error "ES login did not create es_sid_staging.txt"
+    fi
+  fi
+  echo "$sid"
+}
+
+run_es_query() {
+  local path="$1"
+  local body="$2"
+  local kibana_url="${KIBANA_URL_STAGING:-https://es-search.staging.anarock.com:5601}"
+  local kbn_version="${KIBANA_VERSION_STAGING:-8.3.2}"
+  local sid
+
+  if ! sid=$(ensure_es_sid); then
+    exit 1
+  fi
+
+  local curl_args=(-s -L -k -w "\n%{http_code}" -X POST)
+  curl_args+=("${kibana_url}/api/console/proxy?path=${path}&method=GET")
+  curl_args+=(-H "accept: */*")
+  curl_args+=(-H "content-type: application/json")
+  curl_args+=(-H "kbn-build-number: 83335")
+  curl_args+=(-H "kbn-version: ${kbn_version}")
+  curl_args+=(-H "origin: ${kibana_url}")
+  curl_args+=(-H "referer: ${kibana_url}/app/dev_tools")
+  curl_args+=(-H "user-agent: Mozilla/5.0")
+  curl_args+=(-H "x-elastic-internal-origin: Kibana")
+  curl_args+=(-H "Cookie: sid=${sid}")
+
+  local response
+  if [[ -n "$body" ]]; then
+    response=$(curl "${curl_args[@]}" -d "$body")
+  else
+    response=$(curl "${curl_args[@]}")
+  fi
+
+  local http_code
+  local body_response
+  http_code=$(echo "$response" | tail -n1)
+  body_response=$(echo "$response" | sed '$d')
+
+  if [[ "$http_code" == "401" ]] || echo "$body_response" | grep -qi "unauthorized"; then
+    info "ES session expired, re-logging in..."
+    if ! "$PYTHON" "$SCRIPT_DIR/kibana_login.py" >&2; then
+      error "ES login failed. Set KIBANA_USERNAME_STAGING and KIBANA_PASSWORD_STAGING, or provide es_sid_staging.txt."
+    fi
+    if ! sid=$(load_es_sid); then
+      error "ES login did not create es_sid_staging.txt"
+    fi
+
+    curl_args=()
+    curl_args+=(-s -L -k -w "\n%{http_code}" -X POST)
+    curl_args+=("${kibana_url}/api/console/proxy?path=${path}&method=GET")
+    curl_args+=(-H "accept: */*")
+    curl_args+=(-H "content-type: application/json")
+    curl_args+=(-H "kbn-build-number: 83335")
+    curl_args+=(-H "kbn-version: ${kbn_version}")
+    curl_args+=(-H "origin: ${kibana_url}")
+    curl_args+=(-H "referer: ${kibana_url}/app/dev_tools")
+    curl_args+=(-H "user-agent: Mozilla/5.0")
+    curl_args+=(-H "x-elastic-internal-origin: Kibana")
+    curl_args+=(-H "Cookie: sid=${sid}")
+
+    if [[ -n "$body" ]]; then
+      response=$(curl "${curl_args[@]}" -d "$body")
+    else
+      response=$(curl "${curl_args[@]}")
+    fi
+
+    http_code=$(echo "$response" | tail -n1)
+    body_response=$(echo "$response" | sed '$d')
+  fi
+
+  if [[ "$http_code" != "200" ]]; then
+    error "ES request failed with HTTP $http_code: $body_response"
+  fi
+
+  echo "$body_response"
+}
+
+es_encode_path() {
+  local path="$1"
+  ES_PATH="$path" "$PYTHON" -c "import os, urllib.parse; print(urllib.parse.quote(os.environ['ES_PATH'], safe=''))"
+}
+
+validate_json() {
+  local json_str="$1"
+  if ! JSON_STR="$json_str" "$PYTHON" -c "import json, os; json.loads(os.environ['JSON_STR'])" 2>/dev/null; then
+    error "Invalid JSON: $json_str"
+  fi
+}
+
 show_help() {
   cat << 'EOF'
-db - Anarock staging PostgreSQL query CLI
+db - Anarock staging database CLI
 
 USAGE:
     db <command> [args...]
@@ -168,6 +285,9 @@ OPTIONS:
 
 COMMANDS:
     query <database> "<SQL>" [--limit N]
+    es <index> "<query_json>"
+    es indices [--all]
+    es mapping <index>
 
 DATABASE ALIASES:
     leads
@@ -180,6 +300,8 @@ DATABASE ALIASES:
 
 EXAMPLE:
     db query leads "SELECT id, name FROM leads LIMIT 5"
+    db es agent_cp_project_mappings '{"query": {"match_all": {}}, "size": 10}'
+    db es indices
 
 EOF
 }
@@ -211,6 +333,84 @@ cmd_query() {
   run_sql_query "$dbname" "$sql" "$limit"
 }
 
+cmd_es() {
+  if [[ $# -eq 0 ]]; then
+    error "Usage: db es <index> \"<query_json>\" | db es indices [--all] | db es mapping <index>"
+  fi
+
+  local subcommand="$1"
+  shift
+
+  case "$subcommand" in
+    indices)
+      local include_system=""
+      if [[ $# -gt 0 ]] && [[ "$1" == "--all" ]]; then
+        include_system="true"
+      fi
+      cmd_es_indices "$include_system"
+      ;;
+    mapping)
+      if [[ $# -eq 0 ]]; then
+        error "Usage: db es mapping <index>"
+      fi
+      cmd_es_mapping "$1"
+      ;;
+    *)
+      if [[ $# -lt 1 ]]; then
+        error "Usage: db es <index> \"<query_json>\""
+      fi
+      cmd_es_search "$subcommand" "$1"
+      ;;
+  esac
+}
+
+cmd_es_indices() {
+  local include_system="$1"
+  local path
+  path=$(es_encode_path "_aliases")
+
+  local result
+  result=$(run_es_query "$path" "")
+
+  ES_RESULT="$result" ES_INCLUDE_SYSTEM="$include_system" "$PYTHON" << 'PYEOF'
+import json
+import os
+
+result = json.loads(os.environ["ES_RESULT"])
+include_system = os.environ.get("ES_INCLUDE_SYSTEM", "")
+
+if isinstance(result, dict):
+    indices = list(result.keys())
+    if not include_system:
+        indices = [index for index in indices if not index.startswith(".")]
+    print(json.dumps(sorted(indices), indent=2))
+else:
+    print(json.dumps(result, indent=2))
+PYEOF
+}
+
+cmd_es_mapping() {
+  local index="$1"
+  local path
+  path=$(es_encode_path "${index}/_mapping")
+  run_es_query "$path" ""
+}
+
+cmd_es_search() {
+  local index="$1"
+  local query="$2"
+
+  if [[ -z "$index" ]]; then
+    error "Index name is required"
+  fi
+
+  validate_json "$query"
+
+  local path
+  path=$(es_encode_path "${index}/_search")
+  run_es_query "$path" "$query"
+}
+
 main() {
   if [[ $# -eq 0 ]]; then
     show_help
@@ -229,6 +429,10 @@ main() {
     query)
       shift
       cmd_query "$@"
+      ;;
+    es)
+      shift
+      cmd_es "$@"
       ;;
     *)
       error "Unknown command: $1. Use 'db --help' for usage."

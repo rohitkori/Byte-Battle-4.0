@@ -5,3 +5,4 @@ db_query_results
 
 # Auth token files
 auth_token*.txt
+es_sid*.txt
